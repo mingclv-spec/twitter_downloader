@@ -47,6 +47,14 @@ export const Header: React.FC<HeaderProps> = ({ onSelectTab, activeTab = 'subtit
           核心术语
         </button>
         <button
+          onClick={() => onSelectTab?.('archive')}
+          className={`hover:text-white transition-colors whitespace-nowrap shrink-0 pb-1 ${
+            activeTab === 'archive' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-slate-400'
+          }`}
+        >
+          本地档案
+        </button>
+        <button
           onClick={() => onSelectTab?.('downloads')}
           className={`hover:text-white transition-colors whitespace-nowrap shrink-0 pb-1 ${
             activeTab === 'downloads' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-slate-400'
