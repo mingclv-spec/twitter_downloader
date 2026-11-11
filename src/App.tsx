@@ -5,6 +5,7 @@ import { SubtitleList } from './components/SubtitleList';
 import { TweetDetail } from './components/TweetDetail';
 import { GlossaryView } from './components/GlossaryView';
 import { DownloadCenter } from './components/DownloadCenter';
+import { ArchivePanel } from './components/ArchivePanel';
 import { SampleSelector } from './components/SampleSelector';
 import { ResolvedVideoData, TranslationPackage } from './types';
 import { Search, Sparkles, Loader2, Upload, AlertCircle, RefreshCw, Languages, FileVideo } from 'lucide-react';
@@ -15,7 +16,7 @@ export default function App() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'subtitles' | 'translation' | 'glossary' | 'downloads'>('subtitles');
+  const [activeTab, setActiveTab] = useState<'subtitles' | 'translation' | 'glossary' | 'downloads' | 'archive'>('subtitles');
   const [targetLanguage, setTargetLanguage] = useState<'zh-CN' | 'zh-TW'>('zh-CN');
 
   const [videoData, setVideoData] = useState<ResolvedVideoData | null>(null);
@@ -303,8 +304,11 @@ export default function App() {
           </div>
         )}
 
+        {/* Local SQLite Archive */}
+        {activeTab === 'archive' && <ArchivePanel />}
+
         {/* Workspace Grid */}
-        {videoData && (
+        {videoData && activeTab !== 'archive' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Column: Video Player & Tweet Comparison (7 cols) */}
             <div className="lg:col-span-7 space-y-6">
