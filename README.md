@@ -15,18 +15,40 @@ This branch is intended to run on a user's own Windows or macOS computer. The we
 - Node.js 22 LTS or later
 - npm
 - A Google Gemini API key for live AI translation
-- A working yt-dlp executable for the fallback extraction path (the repository currently contains `bin/yt-dlp`; Windows users may need to provide a Windows `yt-dlp.exe`)
+- A working yt-dlp executable for the fallback extraction path. The repository includes a `bin/yt-dlp` file, but verify that it matches your operating system and CPU architecture. On macOS, install a native yt-dlp build if needed.
 
 ## Windows quick start
 
-1. Install Node.js 22 LTS.
+1. Install Node.js 22 LTS or later.
 2. Copy `.env.example` to `.env` and add your Gemini API key.
 3. Double-click `start-windows.bat`.
 4. Open `http://127.0.0.1:3000` in your browser.
 
-Or run manually:
+## macOS quick start (Apple Silicon and Intel)
 
-```powershell
+1. Install Node.js 22 LTS or later from [nodejs.org](https://nodejs.org/en/download). For an M1/M2/M3/M4 Mac, choose the macOS ARM64 installer.
+2. Open Terminal and navigate to the extracted project folder.
+3. Make the startup script executable once:
+
+   ```bash
+   chmod +x start-mac.sh
+   ```
+
+4. Start the app:
+
+   ```bash
+   ./start-mac.sh
+   ```
+
+5. Open `http://127.0.0.1:3000` in your browser.
+
+The script creates `.env` from `.env.example` if needed, installs npm dependencies on first run, and starts the local server. Add your Gemini API key to `.env` for live translation.
+
+If macOS blocks the script, run it from Terminal using the commands above rather than double-clicking it in Finder.
+
+## Manual start (Windows PowerShell or macOS Terminal)
+
+```bash
 npm install
 npm run dev
 ```
@@ -56,7 +78,7 @@ The app currently calls Google's Gemini API for live translation, so the applica
 
 ## Development
 
-```powershell
+```bash
 npm run dev
 npm run build
 npm run lint
