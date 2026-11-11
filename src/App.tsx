@@ -26,6 +26,30 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const saveToArchive = async (target: ResolvedVideoData, translation?: TranslationPackage | null) => {
+    // Demo clips and temporary local uploads are not part of the X/Twitter archive.
+    if (target.isDemo || target.tweetId === 'custom_video' || target.tweetId.startsWith('local_')) return;
+    const response = await fetch('/api/archive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tweetId: target.tweetId,
+        sourceUrl: inputUrl.trim(),
+        title: target.title,
+        text: target.text,
+        author: target.author,
+        createdAt: target.createdAt,
+        videoUrl: target.bestVideoUrl,
+        targetLanguage,
+        translation: translation || undefined,
+      }),
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.error || 'Could not save this post to local archive.');
+    }
+  };
+
   // Load default demo on initial mount
   useEffect(() => {
     loadDemo('demo_ai');
@@ -105,6 +129,7 @@ export default function App() {
       setCurrentVariantUrl(data.bestVideoUrl);
       setCurrentTime(0);
       setTranslationResult(null);
+      saveToArchive(data).catch((err) => setErrorMessage(`Archive warning: ${err.message}`));
 
       // Automatically start AI Translation if English
       startTranslation(data);
@@ -141,6 +166,7 @@ export default function App() {
       }
 
       setTranslationResult(data);
+      await saveToArchive(target, data).catch((err) => setErrorMessage(`Archive warning: ${err.message}`));
     } catch (err: any) {
       setErrorMessage(`翻译提示: ${err.message}`);
     } finally {
