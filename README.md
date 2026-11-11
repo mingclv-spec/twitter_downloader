@@ -22,7 +22,7 @@ This branch is intended to run on a user's own Windows or macOS computer. The we
 1. Install Node.js 22 LTS.
 2. Copy `.env.example` to `.env` and add your Gemini API key.
 3. Double-click `start-windows.bat`.
-4. Open `http://127.0.0.1:3000` if the browser does not open automatically.
+4. Open `http://127.0.0.1:3000` in your browser.
 
 Or run manually:
 
