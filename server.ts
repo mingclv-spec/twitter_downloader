@@ -7,6 +7,7 @@ import util from 'util';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { getTweet } from 'react-tweet/api';
+import { createArchiveRouter } from './archive';
 
 dotenv.config();
 
@@ -25,7 +26,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -34,6 +35,9 @@ app.use((req, res, next) => {
 
 // Serve public samples directly
 app.use('/samples', express.static(path.join(__dirname, 'public', 'samples')));
+
+// Local SQLite archive (on-premise edition).
+app.use('/api/archive', createArchiveRouter(__dirname));
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({
