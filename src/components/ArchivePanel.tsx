@@ -101,7 +101,7 @@ export const ArchivePanel: React.FC = () => {
                     </button>
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-2">保存时间：{new Date(item.savedAt).toLocaleString()}</p>
+                <p className="text-[10px] text-slate-500 mt-2">保存时间：{item.savedAt}</p>
               </article>
             ))}
           </div>
