@@ -9,16 +9,16 @@ echo " X-Trans — On-Premise for macOS"
 echo "========================================"
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js 22 or later is required."
+  echo "Node.js 22.13 or later is required for the local SQLite archive."
   echo "Install it from https://nodejs.org/en/download"
   echo "Apple Silicon users should choose the macOS ARM64 installer."
   read -r -p "Press Enter to close..."
   exit 1
 fi
 
-NODE_MAJOR="$(node -p "Number(process.versions.node.split('.')[0])")"
-if [ "$NODE_MAJOR" -lt 22 ]; then
-  echo "Detected Node.js $(node --version). Please install Node.js 22 or later."
+NODE_VERSION_OK="$(node -e "const [major, minor] = process.versions.node.split('.').map(Number); process.exit(major > 22 || (major === 22 && minor >= 13) ? 0 : 1)" && echo yes || echo no)"
+if [ "$NODE_VERSION_OK" != "yes" ]; then
+  echo "Detected Node.js $(node --version). Please install Node.js 22.13 or later."
   read -r -p "Press Enter to close..."
   exit 1
 fi
