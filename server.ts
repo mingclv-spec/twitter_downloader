@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import util from 'util';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -10,7 +10,7 @@ import { getTweet } from 'react-tweet/api';
 
 dotenv.config();
 
-const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -325,10 +325,14 @@ app.post('/api/resolve', async (req: Request, res: Response) => {
     }
 
     // Attempt 2: Use local yt-dlp extraction
-    const ytdlpPath = path.join(__dirname, 'bin', 'yt-dlp');
-    if (fs.existsSync(ytdlpPath)) {
+    const ytdlpCandidates = process.platform === 'win32'
+      ? [path.join(__dirname, 'bin', 'yt-dlp.exe'), path.join(__dirname, 'bin', 'yt-dlp')]
+      : [path.join(__dirname, 'bin', 'yt-dlp')];
+    const ytdlpPath = ytdlpCandidates.find((candidate) => fs.existsSync(candidate));
+    if (ytdlpPath) {
       try {
-        const { stdout } = await execPromise(`"${ytdlpPath}" -j --no-warnings "${trimmedUrl}"`, { timeout: 12000 });
+        // Use execFile so the user-supplied URL is passed as an argument, not interpreted by a shell.
+        const { stdout } = await execFilePromise(ytdlpPath, ['-j', '--no-warnings', trimmedUrl], { timeout: 12000 });
         if (stdout) {
           const info = JSON.parse(stdout);
           const formats = info.formats || [];
