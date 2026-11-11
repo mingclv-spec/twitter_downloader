@@ -123,7 +123,7 @@ export function createArchiveRouter(projectDir: string) {
       translationJson,
     );
 
-    res.json({ success: true, tweetId, duplicate: Boolean(getPost.get(tweetId)) });
+    res.json({ success: true, tweetId, duplicate: existed });
   });
 
   router.delete('/:tweetId', (req: Request, res: Response) => {
