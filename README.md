@@ -19,14 +19,14 @@ This branch is intended to run on a user's own Windows or macOS computer. The we
 
 ## Windows quick start
 
-1. Install Node.js 22 LTS or later.
+1. Install Node.js 22.13 LTS or later.
 2. Copy `.env.example` to `.env` and add your Gemini API key.
 3. Double-click `start-windows.bat`.
 4. Open `http://127.0.0.1:3000` in your browser.
 
 ## macOS quick start (Apple Silicon and Intel)
 
-1. Install Node.js 22 LTS or later from [nodejs.org](https://nodejs.org/en/download). For an M1/M2/M3/M4 Mac, choose the macOS ARM64 installer.
+1. Install Node.js 22.13 LTS or later from [nodejs.org](https://nodejs.org/en/download). For an M1/M2/M3/M4 Mac, choose the macOS ARM64 installer.
 2. Open Terminal and navigate to the extracted project folder.
 3. Make the startup script executable once:
 
