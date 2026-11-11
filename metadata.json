@@ -1,0 +1,6 @@
+{
+  "name": "X-Trans: Twitter Video Downloader & AI Chinese Translator",
+  "description": "Download Twitter/X videos, extract high-resolution MP4s, generate timed bilingual subtitles, and translate English video speech and tweet captions into natural Chinese with Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
