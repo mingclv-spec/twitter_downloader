@@ -328,11 +328,11 @@ app.post('/api/resolve', async (req: Request, res: Response) => {
     const ytdlpCandidates = process.platform === 'win32'
       ? [path.join(__dirname, 'bin', 'yt-dlp.exe'), path.join(__dirname, 'bin', 'yt-dlp')]
       : [path.join(__dirname, 'bin', 'yt-dlp')];
-    const ytdlpPath = ytdlpCandidates.find((candidate) => fs.existsSync(candidate));
-    if (ytdlpPath) {
-      try {
-        // Use execFile so the user-supplied URL is passed as an argument, not interpreted by a shell.
-        const { stdout } = await execFilePromise(ytdlpPath, ['-j', '--no-warnings', trimmedUrl], { timeout: 12000 });
+    // Prefer a bundled executable, then fall back to yt-dlp installed on the system PATH.
+    const ytdlpPath = ytdlpCandidates.find((candidate) => fs.existsSync(candidate)) || 'yt-dlp';
+    try {
+      // Use execFile so the user-supplied URL is passed as an argument, not interpreted by a shell.
+      const { stdout } = await execFilePromise(ytdlpPath, ['-j', '--no-warnings', trimmedUrl], { timeout: 12000 });
         if (stdout) {
           const info = JSON.parse(stdout);
           const formats = info.formats || [];
@@ -370,9 +370,8 @@ app.post('/api/resolve', async (req: Request, res: Response) => {
             });
           }
         }
-      } catch (ytdlpErr: any) {
-        console.warn('yt-dlp fallback also returned:', ytdlpErr.message);
-      }
+    } catch (ytdlpErr: any) {
+      console.warn('yt-dlp fallback also returned:', ytdlpErr.message);
     }
 
     // If live Twitter API returns rate-limit or no video found, offer a graceful message
