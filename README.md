@@ -44,6 +44,16 @@ This branch is intended to run on a user's own Windows or macOS computer. The we
 
 The script creates `.env` from `.env.example` if needed, installs npm dependencies on first run, and starts the local server. Add your Gemini API key to `.env` for live translation.
 
+### Optional: install yt-dlp on macOS
+
+The server first tries its bundled yt-dlp executable and then looks for `yt-dlp` on your system PATH. To install a native macOS version (recommended if X/Twitter extraction needs the fallback):
+
+```bash
+brew install yt-dlp
+```
+
+If Homebrew is not installed, see [brew.sh](https://brew.sh/). This is optional for starting the app, but may be needed for some video extraction cases.
+
 If macOS blocks the script, run it from Terminal using the commands above rather than double-clicking it in Finder.
 
 ## Manual start (Windows PowerShell or macOS Terminal)
