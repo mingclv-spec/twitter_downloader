@@ -4,7 +4,13 @@ cd /d "%~dp0"
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo Node.js 22 or later is required. Install it from https://nodejs.org/
+  echo Node.js 22.13 or later is required. Install it from https://nodejs.org/
+  pause
+  exit /b 1
+)
+node -e "const [major,minor]=process.versions.node.split('.').map(Number);process.exit(major>22||(major===22&&minor>=13)?0:1)"
+if errorlevel 1 (
+  echo Detected an unsupported Node.js version. Please install Node.js 22.13 or later.
   pause
   exit /b 1
 )
