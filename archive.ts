@@ -97,6 +97,8 @@ export function createArchiveRouter(projectDir: string) {
       }
     }
 
+    const existed = Boolean(getPost.get(tweetId));
+
     db.prepare(`
       INSERT INTO posts (
         tweet_id, source_url, title, post_text, author_name, author_handle,
