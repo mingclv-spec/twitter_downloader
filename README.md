@@ -12,7 +12,7 @@ This branch is intended to run on a user's own Windows or macOS computer. The we
 
 ## Requirements
 
-- Node.js 22 LTS or later
+- Node.js 22.13 LTS or later
 - npm
 - A Google Gemini API key for live AI translation
 - A working yt-dlp executable for the fallback extraction path. The repository includes a `bin/yt-dlp` file, but verify that it matches your operating system and CPU architecture. On macOS, install a native yt-dlp build if needed.
@@ -75,9 +75,17 @@ Keep `.env` private. Never commit API keys.
 
 ## Important implementation status
 
-This is the local-running edition of the current web application, not yet the complete archival workflow originally planned. SQLite history, duplicate detection, configurable archive folders, and automatic per-post video/Markdown/JSON persistence are **not implemented in the current code**. They are planned enhancements for this branch.
+This is the local-running edition of the current web application, not yet the complete archival workflow originally planned. The on-premise branch now includes a local SQLite archive for resolved X/Twitter posts and their translation packages. Posts are automatically saved when resolved and updated when translation completes. Repeated saves use the post ID, so they update the existing record instead of creating duplicates. The archive API supports listing, retrieving, saving/updating, and deleting records. Automatic video-file storage, per-post export folders, and an archive browser in the UI are still planned.
 
 The app currently calls Google's Gemini API for live translation, so the application runs locally but translation requests still require internet access and use the configured API key. X/Twitter extraction also depends on external services and the availability of the post.
+
+## Local archive
+
+- SQLite database: `data/xtrans-archive.sqlite` by default.
+- The `data/` directory is created automatically and excluded from Git.
+- Override the location with `ARCHIVE_DIR` in `.env`.
+- API: `GET /api/archive`, `GET /api/archive/:tweetId`, `POST /api/archive`, and `DELETE /api/archive/:tweetId`.
+- The current archive stores post metadata and translation JSON; it does not yet copy the video file into the archive.
 
 ## Local data and privacy
 
