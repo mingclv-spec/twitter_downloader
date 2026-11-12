@@ -1,0 +1,32 @@
+name: Online branch build test
+
+on:
+  push:
+    branches:
+      - online
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out online branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build --tag twitter-downloader-online:test .
