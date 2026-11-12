@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ResolvedVideoData, TranslationPackage } from '../types';
 import { Download, Film, FileText, FileCode, Copy, ExternalLink, ClipboardCheck } from 'lucide-react';
 
@@ -17,6 +17,10 @@ export const DownloadCenter: React.FC<DownloadCenterProps> = ({ tweet, translati
     [translation?.summary, translation?.tweetTranslation, '#精彩视频'].filter(Boolean).join('\n\n')
   );
   const [copiedField, setCopiedField] = useState<'title' | 'description' | null>(null);
+  useEffect(() => setWechatTitle(suggestedTitle), [suggestedTitle]);
+  useEffect(() => {
+    setWechatDescription([translation?.summary, translation?.tweetTranslation, '#精彩视频'].filter(Boolean).join('\n\n'));
+  }, [translation?.summary, translation?.tweetTranslation]);
 
   const copyWechatText = async (value: string, field: 'title' | 'description') => {
     try {
