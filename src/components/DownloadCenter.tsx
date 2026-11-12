@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { ResolvedVideoData, TranslationPackage } from '../types';
-import { Download, Film, FileText, FileCode, CheckCircle2 } from 'lucide-react';
+import { Download, Film, FileText, FileCode, Copy, ExternalLink, ClipboardCheck } from 'lucide-react';
 
 interface DownloadCenterProps {
   tweet: ResolvedVideoData;
@@ -8,6 +8,33 @@ interface DownloadCenterProps {
 }
 
 export const DownloadCenter: React.FC<DownloadCenterProps> = ({ tweet, translation }) => {
+  const suggestedTitle = useMemo(() => {
+    const source = (translation?.tweetTranslation || tweet.title || tweet.text || '精彩视频分享').replace(/\s+/g, ' ').trim();
+    return source.length > 50 ? source.slice(0, 47) + '...' : source;
+  }, [tweet.title, tweet.text, translation?.tweetTranslation]);
+  const [wechatTitle, setWechatTitle] = useState(suggestedTitle);
+  const [wechatDescription, setWechatDescription] = useState(
+    [translation?.summary, translation?.tweetTranslation, '#精彩视频'].filter(Boolean).join('\n\n')
+  );
+  const [copiedField, setCopiedField] = useState<'title' | 'description' | null>(null);
+
+  const copyWechatText = async (value: string, field: 'title' | 'description') => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      window.setTimeout(() => setCopiedField(null), 1800);
+    } catch {
+      const input = document.createElement('textarea');
+      input.value = value;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopiedField(field);
+    }
+  };
   const triggerDownload = (url: string, filename: string) => {
     const downloadEndpoint = `/api/download-file?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
     window.location.href = downloadEndpoint;
@@ -81,6 +108,43 @@ ${(translation?.subtitles || [])
           支持离线保存高清视频、标准字幕及 Markdown 报告
         </span>
       </div>
+
+      {/* WeChat Channels desktop publishing helper */}
+      <section className="rounded-xl border border-emerald-800/70 bg-emerald-950/20 p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className="text-sm font-semibold text-white">发布到微信视频号（电脑端）</h4>
+            <p className="text-[11px] text-slate-400 mt-1">先下载 MP4，再复制文案并打开官方助手上传</p>
+          </div>
+          <span className="text-[10px] rounded-full border border-emerald-700/70 px-2 py-1 text-emerald-300">Windows / Mac</span>
+        </div>
+        <div className="space-y-2">
+          <label className="block text-xs text-slate-300">
+            视频标题
+            <input value={wechatTitle} onChange={(e) => setWechatTitle(e.target.value)} maxLength={50} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" placeholder="编辑视频标题" />
+            <span className="mt-1 block text-right text-[10px] text-slate-500">{wechatTitle.length}/50</span>
+          </label>
+          <div>
+            <label className="block text-xs text-slate-300" htmlFor="wechat-description">视频描述 / 话题</label>
+            <textarea id="wechat-description" value={wechatDescription} onChange={(e) => setWechatDescription(e.target.value)} rows={4} maxLength={1000} className="mt-1 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" placeholder="编辑视频描述，可添加 #话题" />
+            <span className="mt-1 block text-right text-[10px] text-slate-500">{wechatDescription.length}/1000</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => copyWechatText(wechatTitle, 'title')} disabled={!wechatTitle.trim()} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 disabled:opacity-40 flex items-center gap-1.5">
+            {copiedField === 'title' ? <ClipboardCheck className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedField === 'title' ? '标题已复制' : '复制标题'}
+          </button>
+          <button type="button" onClick={() => copyWechatText(wechatDescription, 'description')} disabled={!wechatDescription.trim()} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 disabled:opacity-40 flex items-center gap-1.5">
+            {copiedField === 'description' ? <ClipboardCheck className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedField === 'description' ? '描述已复制' : '复制描述'}
+          </button>
+          <a href="https://channels.weixin.qq.com/platform/post/create" target="_blank" rel="noopener noreferrer" className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500 flex items-center gap-1.5">
+            打开视频号助手上传 <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+        <p className="text-[11px] leading-relaxed text-slate-400">操作：下载上方 MP4 → 打开视频号助手并扫码登录 → 上传本地视频 → 粘贴标题和描述 → 检查封面、可见范围及版权声明 → 手动发表。此功能不会读取或保存微信登录信息，也不会自动发布。</p>
+      </section>
 
       {/* Video Resolutions */}
       <div>
