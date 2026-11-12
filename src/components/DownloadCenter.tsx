@@ -16,7 +16,15 @@ export const DownloadCenter: React.FC<DownloadCenterProps> = ({ tweet, translati
   const [wechatDescription, setWechatDescription] = useState(
     [translation?.summary, translation?.tweetTranslation, '#精彩视频'].filter(Boolean).join('\n\n')
   );
-  const [copiedField, setCopiedField] = useState<'title' | 'description' | null>(null);
+  const [copiedField, setCopiedField] = useState<'title' | 'description' | 'xhs-title' | 'xhs-description' | null>(null);
+  const [xhsTitle, setXhsTitle] = useState(suggestedTitle.slice(0, 20));
+  const [xhsDescription, setXhsDescription] = useState(
+    [translation?.summary, translation?.tweetTranslation, '#小红书 #视频分享'].filter(Boolean).join('\n\n')
+  );
+  useEffect(() => setXhsTitle(suggestedTitle.slice(0, 20)), [suggestedTitle]);
+  useEffect(() => {
+    setXhsDescription([translation?.summary, translation?.tweetTranslation, '#小红书 #视频分享'].filter(Boolean).join('\n\n'));
+  }, [translation?.summary, translation?.tweetTranslation]);
   useEffect(() => setWechatTitle(suggestedTitle), [suggestedTitle]);
   useEffect(() => {
     setWechatDescription([translation?.summary, translation?.tweetTranslation, '#精彩视频'].filter(Boolean).join('\n\n'));
@@ -148,6 +156,43 @@ ${(translation?.subtitles || [])
           </a>
         </div>
         <p className="text-[11px] leading-relaxed text-slate-400">操作：下载上方 MP4 → 打开视频号助手并扫码登录 → 上传本地视频 → 粘贴标题和描述 → 检查封面、可见范围及版权声明 → 手动发表。此功能不会读取或保存微信登录信息，也不会自动发布。</p>
+      </section>
+
+      {/* Xiaohongshu desktop publishing helper */}
+      <section className="rounded-xl border border-rose-800/70 bg-rose-950/20 p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className="text-sm font-semibold text-white">发布到小红书（电脑端）</h4>
+            <p className="text-[11px] text-slate-400 mt-1">下载 MP4 到电脑，准备笔记文案，再到官方创作平台上传</p>
+          </div>
+          <span className="text-[10px] rounded-full border border-rose-700/70 px-2 py-1 text-rose-300">Windows / Mac</span>
+        </div>
+        <div className="space-y-2">
+          <label className="block text-xs text-slate-300">
+            笔记标题
+            <input value={xhsTitle} onChange={(e) => setXhsTitle(e.target.value)} maxLength={20} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-rose-500" placeholder="编辑小红书标题" />
+            <span className="mt-1 block text-right text-[10px] text-slate-500">{xhsTitle.length}/20</span>
+          </label>
+          <div>
+            <label className="block text-xs text-slate-300" htmlFor="xiaohongshu-description">笔记正文 / 话题标签</label>
+            <textarea id="xiaohongshu-description" value={xhsDescription} onChange={(e) => setXhsDescription(e.target.value)} rows={4} maxLength={2000} className="mt-1 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-rose-500" placeholder="编辑笔记正文，添加相关话题标签" />
+            <span className="mt-1 block text-right text-[10px] text-slate-500">{xhsDescription.length}/2000</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => copyWechatText(xhsTitle, 'xhs-title')} disabled={!xhsTitle.trim()} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 disabled:opacity-40 flex items-center gap-1.5">
+            {copiedField === 'xhs-title' ? <ClipboardCheck className="h-3.5 w-3.5 text-rose-400" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedField === 'xhs-title' ? '标题已复制' : '复制标题'}
+          </button>
+          <button type="button" onClick={() => copyWechatText(xhsDescription, 'xhs-description')} disabled={!xhsDescription.trim()} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:bg-slate-700 disabled:opacity-40 flex items-center gap-1.5">
+            {copiedField === 'xhs-description' ? <ClipboardCheck className="h-3.5 w-3.5 text-rose-400" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedField === 'xhs-description' ? '正文已复制' : '复制正文'}
+          </button>
+          <a href="https://creator.xiaohongshu.com/publish/publish?source=official&target=video" target="_blank" rel="noopener noreferrer" className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-500 flex items-center gap-1.5">
+            打开小红书创作平台 <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+        <p className="text-[11px] leading-relaxed text-slate-400">操作：先下载上方 MP4 → 打开小红书创作平台并登录 → 选择视频发布 → 上传本地 MP4 → 粘贴标题和正文 → 检查封面、话题及版权信息 → 手动发布。此功能不会读取或保存小红书登录信息，也不会自动发布。</p>
       </section>
 
       {/* Video Resolutions */}
