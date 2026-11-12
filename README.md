@@ -1,16 +1,16 @@
 # X-Trans — Online Edition
 
-This branch is intended for a future hosted deployment. It retains the React + Express application model and adds a container build suitable for a managed container platform such as Google Cloud Run.
+This branch runs the hosted React + Express application in a managed container.
 
 ## Current capabilities
 
-The application currently supports X/Twitter video resolution, video quality selection, streaming/downloads, Gemini-based translation, bilingual subtitles, glossary content, and SRT/VTT/Markdown exports.
+The application supports X/Twitter video resolution, video quality selection, streaming/downloads, and free MyMemory text translation without an API key. The sample clips include prewritten transcripts that can be translated into subtitles. For other videos, this service translates the post text only; it does not transcribe audio or generate video summaries and glossaries.
 
 ## Container build
 
 ```bash
 docker build -t x-trans-online .
-docker run --rm -p 8080:8080 -e GEMINI_API_KEY="$GEMINI_API_KEY" x-trans-online
+docker run --rm -p 8080:8080 x-trans-online
 ```
 
 Then open `http://localhost:8080`.
@@ -19,17 +19,17 @@ Then open `http://localhost:8080`.
 
 - Container listens on port `8080` by default.
 - Set `NODE_ENV=production`.
-- Supply `GEMINI_API_KEY` through the hosting platform's secret manager (for Google Cloud Run, use Secret Manager integration).
+- Translation calls MyMemory over HTTPS; no translation API key is required.
 - Do not put secrets in the image, source code, or deployment manifest.
 - Configure platform-appropriate request timeouts and resource limits for video streaming and AI calls.
 
 ## Before making this service public
 
-The current server was originally structured for a controlled/demo environment. It is **not yet hardened for unrestricted public internet access**. In particular:
+The current server was originally structured for a controlled/demo environment. It is **not yet hardened for unrestricted public internet access**. Translation sends the post text to MyMemory; anonymous use is limited to 5,000 characters per day, and each request is limited to 500 bytes. In particular:
 
 1. CORS currently allows every origin.
 2. Video proxy and download endpoints accept caller-supplied URLs and need SSRF protections (allowlist expected media hosts, reject private/link-local IP ranges, validate redirects, and limit response size/time).
-3. Download and translation endpoints need rate limiting, abuse controls, and request quotas to protect infrastructure and Gemini spend.
+3. Download and translation endpoints need rate limiting, abuse controls, and request quotas to protect infrastructure and MyMemory's anonymous daily quota.
 4. Authentication/authorization and per-user quotas are not implemented.
 5. Temporary files, persistent storage, and retention policies need an explicit design before multi-user use.
 
@@ -53,7 +53,7 @@ The Worker serves static assets and forwards only `/api/*` to the configured HTT
 
 ### Important security gate
 
-**Do not connect a public backend yet.** The existing Express API still needs server-side hardening before exposure: SSRF-safe media URL validation and redirect handling, bounded streaming/timeouts, rate limiting, request validation, and Gemini spend controls. The Worker gateway is not a substitute for backend security or authentication. Keep the backend private/restricted until those controls are implemented and tested.
+**Do not connect a public backend yet.** The existing Express API still needs server-side hardening before exposure: SSRF-safe media URL validation and redirect handling, bounded streaming/timeouts, rate limiting, request validation, and translation service quotas. The Worker gateway is not a substitute for backend security or authentication. Keep the backend private/restricted until those controls are implemented and tested.
 
 Cloudflare Workers Free currently includes 100,000 Worker requests per day and a 10 ms CPU limit per invocation. Static asset responses have separate free/unlimited asset delivery treatment. Cloudflare Containers are not included on the Free Workers plan; they require Workers Paid. See the [Workers limits](https://developers.cloudflare.com/workers/platform/limits/), [Static Assets billing](https://developers.cloudflare.com/workers/static-assets/billing/), and [Containers pricing](https://developers.cloudflare.com/containers/platform/pricing/) documentation.
 
