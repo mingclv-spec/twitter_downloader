@@ -5,7 +5,6 @@ import fs from 'fs';
 import { execFile } from 'child_process';
 import util from 'util';
 import dotenv from 'dotenv';
-import { GoogleGenAI, Type } from '@google/genai';
 import { getTweet } from 'react-tweet/api';
 
 dotenv.config();
@@ -36,16 +35,7 @@ app.use((req, res, next) => {
 app.use('/samples', express.static(path.join(__dirname, 'public', 'samples')));
 
 // Initialize Gemini Client
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || '',
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
-
-// Demo video catalog for 1-click testing
+const ai = new GoogleGe// Demo video catalog for 1-click testing
 export interface DemoPost {
   id: string;
   title: string;
@@ -404,157 +394,184 @@ function formatVttTimestamp(seconds: number): string {
   return `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(ms, 3)}`;
 }
 
-// 2. Translate Endpoint (Gemini 3.8 Flash)
+// Translate text through MyMemory's free, anonymous translation endpoint.
+function splitMyMemoryChunks(input: string, maxBytes = 450): string[] {
+  const chunks: string[] = [];
+  let current = '';
+  const words = input.match(/\S+\s*/g) || [input];
+
+  for (const word of words) {
+    if (Buffer.byteLength(word, 'utf8') > maxBytes) {
+      if (current) chunks.push(current);
+      current = '';
+      let fragment = '';
+      for (const character of Array.from(word)) {
+        if (Buffer.byteLength(fragment + character, 'utf8') > maxBytes) {
+          chunks.push(fragment);
+          fragment = character;
+        } else {
+          fragment += character;
+        }
+      }
+      current = fragment;
+    } else if (Buffer.byteLength(current + word, 'utf8') > maxBytes) {
+      if (current) chunks.push(current);
+      current = word;
+    } else {
+      current += word;
+    }
+  }
+
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+function decodeTranslationEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+async function translateWithMyMemory(
+  input: string,
+  targetLanguage: 'zh-CN' | 'zh-TW',
+  sourceLanguage = 'en'
+): Promise<string> {
+  const chunks = splitMyMemoryChunks(input.trim());
+  const translated: string[] = [];
+
+  for (const chunk of chunks) {
+    const endpoint = new URL('https://api.mymemory.translated.net/get');
+    endpoint.searchParams.set('q', chunk);
+    endpoint.searchParams.set('langpair', sourceLanguage + '|' + targetLanguage);
+
+    const response = await fetch(endpoint, { signal: AbortSignal.timeout(15000) });
+    if (!response.ok) {
+      throw new Error('MyMemory returned HTTP ' + response.status);
+    }
+
+    const payload = await response.json() as {
+      responseStatus?: number;
+      responseDetails?: string;
+      quotaFinished?: boolean;
+      responseData?: { translatedText?: string };
+    };
+
+    if (payload.quotaFinished) {
+      throw new Error('MyMemory daily free quota has been reached.');
+    }
+    if (payload.responseStatus !== 200 || !payload.responseData?.translatedText) {
+      throw new Error(payload.responseDetails || 'MyMemory did not return a translation.');
+    }
+    translated.push(decodeTranslationEntities(payload.responseData.translatedText));
+  }
+
+  return translated.join('').trim();
+}
+
+function translationNotice(targetLanguage: 'zh-CN' | 'zh-TW', isDemo: boolean): string {
+  if (targetLanguage === 'zh-TW') {
+    return isDemo
+      ? '推文文字已透過 MyMemory 免費服務翻譯；字幕使用樣例內建的英文稿。'
+      : 'MyMemory 免費服務只翻譯推文文字，文字會傳送至 MyMemory。它不會轉寫影片語音，因此本次不會產生字幕、摘要或術語。';
+  }
+  return isDemo
+    ? '推文文字已通过 MyMemory 免费服务翻译；字幕使用样例内置的英文稿。'
+    : 'MyMemory 免费服务只翻译推文文字，文字会发送至 MyMemory。它不会转写视频语音，因此本次不会生成字幕、摘要或术语。';
+}
+
+// 2. Translate Endpoint (MyMemory, no API key)
 app.post('/api/translate', async (req: Request, res: Response) => {
   try {
     const {
       tweetText = '',
-      title = '',
-      videoUrl = '',
-      targetLanguage = 'zh-CN', // 'zh-CN' (Simplified) or 'zh-TW' (Traditional)
+      targetLanguage: requestedLanguage = 'zh-CN',
       demoId,
     } = req.body;
 
-    const isTraditional = targetLanguage === 'zh-TW';
-    const langTargetName = isTraditional ? 'Traditional Chinese (繁體中文)' : 'Simplified Chinese (简体中文)';
+    const targetLanguage: 'zh-CN' | 'zh-TW' =
+      requestedLanguage === 'zh-TW' ? 'zh-TW' : 'zh-CN';
+    const demo = demoId && DEMO_POSTS[demoId] ? DEMO_POSTS[demoId] : null;
+    const sourceText = demo ? demo.tweetText : String(tweetText || '');
 
-    // If it's a known demo post, return the pre-cached authentic translation or re-synthesize
-    if (demoId && DEMO_POSTS[demoId]) {
-      const demo = DEMO_POSTS[demoId];
-      // Generate SRT and VTT
-      const srt = demo.demoSubtitles
-        .map((sub, i) => `${i + 1}\n${formatSrtTimestamp(sub.start)} --> ${formatSrtTimestamp(sub.end)}\n${sub.originalText}\n${sub.chineseText}\n`)
-        .join('\n');
-
-      const vtt = 'WEBVTT\n\n' + demo.demoSubtitles
-        .map((sub, i) => `${i + 1}\n${formatVttTimestamp(sub.start)} --> ${formatVttTimestamp(sub.end)}\n${sub.chineseText}\n${sub.originalText}\n`)
-        .join('\n');
-
-      return res.json({
-        success: true,
-        detectedLanguage: 'English',
-        targetLanguage,
-        tweetTranslation: demo.demoChineseTweet,
-        summary: demo.demoSummary,
-        subtitles: demo.demoSubtitles,
-        srtContent: srt,
-        vttContent: vtt,
-        glossary: demo.demoVocabulary,
-      });
+    if (!sourceText.trim()) {
+      return res.status(400).json({ error: 'There is no post text to translate.' });
+    }
+    if (sourceText.length > 5000) {
+      return res.status(413).json({ error: 'The post text exceeds the free translation limit.' });
     }
 
-    // Call Gemini 3.8 Flash
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return res.status(403).json({
-        error: 'Gemini API key is not configured. Please verify your API key in Settings > Secrets.',
-        code: 'MISSING_API_KEY',
-      });
+    const tweetTranslation = await translateWithMyMemory(sourceText, targetLanguage);
+    const subtitles = [];
+
+    if (demo) {
+      for (const [index, subtitle] of demo.demoSubtitles.entries()) {
+        subtitles.push({
+          ...subtitle,
+          id: index + 1,
+          chineseText: await translateWithMyMemory(subtitle.originalText, targetLanguage),
+        });
+      }
     }
 
-    const systemPrompt = `You are an elite bilingual translator, localization engineer, and audiovisual subtitler specializing in translating English Twitter/X video content into natural, high-grade ${langTargetName}.
-Requirements:
-1. Detect whether the post and speech content is in English. If in English (or other non-Chinese language), translate into fluent, culturally authentic ${langTargetName}.
-2. Translate the original tweet post caption / text into polished Chinese.
-3. Transcribe and timestamp the speech segments into a chronological array of bilingual subtitle cues (English originalText and Chinese chineseText). If audio is unavailable, segment the post text into coherent timed sentences suitable for video subtitles (3 to 6 segments spanning 15 seconds).
-4. Provide a clear executive summary (内容摘要) in Chinese (2-3 sentences).
-5. Extract 3-5 core terminology / vocabulary keywords with their translation and brief contextual explanation in Chinese.
-6. Return only valid JSON conforming strictly to the requested schema.`;
+    let summary = translationNotice(targetLanguage, Boolean(demo));
+    let glossary: Array<{ term: string; translation: string; context: string }> = [];
 
-    const userPrompt = `Content to analyze and translate into ${langTargetName}:
-Tweet Title / Context: "${title}"
-Tweet Post Text: "${tweetText}"
-Video Source: "${videoUrl}"
+    if (demo) {
+      const demoSummary = targetLanguage === 'zh-TW'
+        ? await translateWithMyMemory(demo.demoSummary, targetLanguage, 'zh-CN')
+        : demo.demoSummary;
+      summary = demoSummary + '\n\n' + summary;
 
-Please produce the comprehensive translation package.`;
+      glossary = [];
+      for (const item of demo.demoVocabulary) {
+        glossary.push({
+          term: item.term,
+          translation: await translateWithMyMemory(item.term, targetLanguage),
+          context: targetLanguage === 'zh-TW'
+            ? await translateWithMyMemory(item.context, targetLanguage, 'zh-CN')
+            : item.context,
+        });
+      }
+    }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: userPrompt,
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            detectedLanguage: { type: Type.STRING, description: 'Source language detected (e.g. English, Chinese, etc.)' },
-            tweetTranslation: { type: Type.STRING, description: 'High quality Chinese translation of the tweet post text' },
-            summary: { type: Type.STRING, description: 'Executive summary of video content in Chinese' },
-            subtitles: {
-              type: Type.ARRAY,
-              description: 'Timed subtitle segments',
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.INTEGER },
-                  start: { type: Type.NUMBER, description: 'Start time in seconds' },
-                  end: { type: Type.NUMBER, description: 'End time in seconds' },
-                  startFormatted: { type: Type.STRING, description: 'Start time formatted (e.g. 00:01.500)' },
-                  endFormatted: { type: Type.STRING, description: 'End time formatted (e.g. 00:04.200)' },
-                  originalText: { type: Type.STRING, description: 'Original English speech/sentence' },
-                  chineseText: { type: Type.STRING, description: 'Translated Chinese subtitle' },
-                },
-                required: ['id', 'start', 'end', 'startFormatted', 'endFormatted', 'originalText', 'chineseText'],
-              },
-            },
-            glossary: {
-              type: Type.ARRAY,
-              description: 'Key vocabulary terms and bilingual definitions',
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  term: { type: Type.STRING },
-                  translation: { type: Type.STRING },
-                  context: { type: Type.STRING },
-                },
-                required: ['term', 'translation', 'context'],
-              },
-            },
-          },
-          required: ['detectedLanguage', 'tweetTranslation', 'summary', 'subtitles', 'glossary'],
-        },
-      },
-    });
-
-    const parsedData = JSON.parse(response.text || '{}');
-
-    // Build SRT & VTT formats
-    const subs = parsedData.subtitles || [];
-    const srt = subs
-      .map(
-        (sub: any, i: number) =>
-          `${i + 1}\n${formatSrtTimestamp(sub.start)} --> ${formatSrtTimestamp(sub.end)}\n${sub.originalText}\n${sub.chineseText}\n`
+    const srt = subtitles
+      .map((subtitle, index) =>
+        (index + 1) + '\n' +
+        formatSrtTimestamp(subtitle.start) + ' --> ' +
+        formatSrtTimestamp(subtitle.end) + '\n' +
+        subtitle.originalText + '\n' + subtitle.chineseText + '\n'
       )
       .join('\n');
 
-    const vtt =
-      'WEBVTT\n\n' +
-      subs
-        .map(
-          (sub: any, i: number) =>
-            `${i + 1}\n${formatVttTimestamp(sub.start)} --> ${formatVttTimestamp(sub.end)}\n${sub.chineseText}\n${sub.originalText}\n`
-        )
-        .join('\n');
+    const vtt = 'WEBVTT\n\n' + subtitles
+      .map((subtitle, index) =>
+        (index + 1) + '\n' +
+        formatVttTimestamp(subtitle.start) + ' --> ' +
+        formatVttTimestamp(subtitle.end) + '\n' +
+        subtitle.chineseText + '\n' + subtitle.originalText + '\n'
+      )
+      .join('\n');
 
     return res.json({
       success: true,
-      detectedLanguage: parsedData.detectedLanguage || 'English',
+      detectedLanguage: 'English',
       targetLanguage,
-      tweetTranslation: parsedData.tweetTranslation || '',
-      summary: parsedData.summary || '',
-      subtitles: subs,
+      tweetTranslation,
+      summary,
+      subtitles,
       srtContent: srt,
-      vttContent: vtt,
-      glossary: parsedData.glossary || [],
+      vttContent: subtitles.length ? vtt : '',
+      glossary,
     });
-  } catch (err: any) {
-    console.error('Error in /api/translate:', err);
-    if (err.status === 403 || err.message?.includes('PERMISSION_DENIED') || err.message?.includes('API_KEY')) {
-      return res.status(403).json({
-        error: 'Gemini API authentication failed. Please select or verify your API key in the Settings > Secrets panel.',
-      });
-    }
-    return res.status(500).json({ error: err.message || 'Failed to translate video content' });
+  } catch (error: any) {
+    console.error('Error in /api/translate:', error);
+    return res.status(502).json({
+      error: 'The free translation service is unavailable or its daily quota has been reached. Please try again later.',
+    });
   }
 });
 
