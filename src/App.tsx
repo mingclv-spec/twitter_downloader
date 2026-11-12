@@ -7,7 +7,8 @@ import { GlossaryView } from './components/GlossaryView';
 import { DownloadCenter } from './components/DownloadCenter';
 import { SampleSelector } from './components/SampleSelector';
 import { ResolvedVideoData, TranslationPackage } from './types';
-import { Search, Sparkles, Loader2, Upload, AlertCircle, RefreshCw, Languages, FileVideo } from 'lucide-react';
+import { WeChatShareModal } from './components/WeChatShareModal';
+import { Search, Sparkles, Loader2, Upload, AlertCircle, RefreshCw, Languages, FileVideo, Share2, ShieldCheck } from 'lucide-react';
 
 export default function App() {
   const [inputUrl, setInputUrl] = useState('');
@@ -23,6 +24,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [translationResult, setTranslationResult] = useState<TranslationPackage | null>(null);
   const [activeSampleId, setActiveSampleId] = useState<string>('demo_ai');
+  const [isWeChatModalOpen, setIsWeChatModalOpen] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -187,6 +189,7 @@ export default function App() {
         activeTab={activeTab}
         onSelectTab={(tab: string) => setActiveTab(tab as any)}
         onOpenUpload={() => fileInputRef.current?.click()}
+        onOpenWeChatModal={() => setIsWeChatModalOpen(true)}
       />
 
       {/* Hidden File Input */}
@@ -202,6 +205,22 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Search & Input Strip */}
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+          {/* Keyless & WeChat indicator banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs pb-1">
+            <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>免 API Key 运行：无需配置任何付费或第三方 API Key，完全开箱即用</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsWeChatModalOpen(true)}
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>一键转发至微信朋友圈 / 视频号</span>
+            </button>
+          </div>
+
           <form onSubmit={handleResolveUrl} className="flex flex-col md:flex-row items-stretch gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -310,23 +329,34 @@ export default function App() {
                   </span>
                 </div>
 
-                <button
-                  onClick={() => startTranslation()}
-                  disabled={isTranslating}
-                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  {isTranslating ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Gemini 翻译中...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{translationResult ? '重新生成中文翻译' : '开始 AI 中文翻译'}</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsWeChatModalOpen(true)}
+                    className="px-3 py-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-lg font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="生成微信朋友圈文案、视频号压制指南与扫码存手机"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>转发到微信</span>
+                  </button>
+                  <button
+                    onClick={() => startTranslation()}
+                    disabled={isTranslating}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {isTranslating ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>翻译处理中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{translationResult ? '重新生成中文翻译' : '开始中文翻译 (免Key)'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Tweet Side-by-Side Details */}
@@ -411,11 +441,22 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* WeChat Share Modal */}
+        {videoData && (
+          <WeChatShareModal
+            isOpen={isWeChatModalOpen}
+            onClose={() => setIsWeChatModalOpen(false)}
+            tweet={videoData}
+            translation={translationResult}
+            currentVideoUrl={currentVariantUrl}
+          />
+        )}
       </main>
 
       {/* Clean quiet footer */}
       <footer className="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-        <p>X-Trans · Twitter 视频多清晰度下载与 Gemini AI 中文智能译配系统</p>
+        <p>X-Trans · Twitter 视频多清晰度下载与中文智能译配系统 · 100% 免 API Key 开箱即用</p>
       </footer>
     </div>
   );
