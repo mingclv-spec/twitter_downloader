@@ -35,6 +35,28 @@ The current server was originally structured for a controlled/demo environment. 
 
 Do not deploy this branch as a public production service until these controls are implemented and tested.
 
+
+## Cloudflare Workers Free (frontend and API gateway)
+
+The Cloudflare Workers Free plan can host the built React frontend as static assets and route `/api/*` requests to a separately hosted HTTPS API origin. It cannot run this Express/Node application or execute the bundled `yt-dlp` process directly.
+
+### Deploy the frontend
+
+1. Build the frontend: `npm ci && npm run build`.
+2. Install Wrangler locally or use `npx wrangler`.
+3. Authenticate: `npx wrangler login`.
+4. Deploy: `npx wrangler deploy`.
+5. In the Worker settings, add the secret/variable `BACKEND_ORIGIN` containing the HTTPS origin of the separately deployed API service (for example, your Render service URL). Do not include a path or credentials.
+6. Redeploy after setting the variable if required by your configuration.
+
+The Worker serves static assets and forwards only `/api/*` to the configured HTTPS backend. Until `BACKEND_ORIGIN` is configured, API requests return HTTP 503; the frontend itself can still be served.
+
+### Important security gate
+
+**Do not connect a public backend yet.** The existing Express API still needs server-side hardening before exposure: SSRF-safe media URL validation and redirect handling, bounded streaming/timeouts, rate limiting, request validation, and Gemini spend controls. The Worker gateway is not a substitute for backend security or authentication. Keep the backend private/restricted until those controls are implemented and tested.
+
+Cloudflare Workers Free currently includes 100,000 Worker requests per day and a 10 ms CPU limit per invocation. Static asset responses have separate free/unlimited asset delivery treatment. Cloudflare Containers are not included on the Free Workers plan; they require Workers Paid. See the [Workers limits](https://developers.cloudflare.com/workers/platform/limits/), [Static Assets billing](https://developers.cloudflare.com/workers/static-assets/billing/), and [Containers pricing](https://developers.cloudflare.com/containers/platform/pricing/) documentation.
+
 ## Storage design
 
 The current app does not yet implement durable user accounts, SQLite history, or persistent per-post archives. For an online multi-user service, persistent metadata and media storage should be externalised rather than relying on a container's local filesystem. The storage/database choice will be made before implementing the hosted archive workflow.
