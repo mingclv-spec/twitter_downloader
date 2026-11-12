@@ -34,8 +34,7 @@ app.use((req, res, next) => {
 // Serve public samples directly
 app.use('/samples', express.static(path.join(__dirname, 'public', 'samples')));
 
-// Initialize Gemini Client
-const ai = new GoogleGe// Demo video catalog for 1-click testing
+// Demo video catalog for 1-click testing
 export interface DemoPost {
   id: string;
   title: string;
