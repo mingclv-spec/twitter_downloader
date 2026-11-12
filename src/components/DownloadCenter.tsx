@@ -30,7 +30,7 @@ export const DownloadCenter: React.FC<DownloadCenterProps> = ({ tweet, translati
     setWechatDescription([translation?.summary, translation?.tweetTranslation, '#精彩视频'].filter(Boolean).join('\n\n'));
   }, [translation?.summary, translation?.tweetTranslation]);
 
-  const copyWechatText = async (value: string, field: 'title' | 'description') => {
+  const copyWechatText = async (value: string, field: 'title' | 'description' | 'xhs-title' | 'xhs-description') => {
     try {
       await navigator.clipboard.writeText(value);
       setCopiedField(field);
