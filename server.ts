@@ -447,9 +447,16 @@ async function translateWithMyMemory(
     endpoint.searchParams.set('q', chunk);
     endpoint.searchParams.set('langpair', sourceLanguage + '|' + targetLanguage);
 
-    const response = await fetch(endpoint, { signal: AbortSignal.timeout(15000) });
-    if (!response.ok) {
-      throw new Error('MyMemory returned HTTP ' + response.status);
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      response = await fetch(endpoint, { signal: AbortSignal.timeout(15000) });
+      if (response.status !== 429 || attempt === 1) break;
+
+      const retryAfter = Math.min(Math.max(Number(response.headers.get('retry-after')) || 1, 1), 5);
+      await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+    }
+    if (!response || !response.ok) {
+      throw new Error('MyMemory returned HTTP ' + (response?.status || 'unknown'));
     }
 
     const payload = await response.json() as {
