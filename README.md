@@ -15,6 +15,19 @@ docker run --rm -p 8080:8080 x-trans-online
 
 Then open `http://localhost:8080`.
 
+## Home hosting on Ubuntu
+
+This branch includes a Docker Compose setup that runs the app with a local LibreTranslate service. It does not need a Gemini or translation API key and keeps translation requests on the Ubuntu server.
+
+```bash
+docker compose -f docker-compose.home.yml up -d --build
+```
+
+After the first start downloads the English and Chinese language models, open `http://localhost:8080` on the server. The app's data volume keeps the downloaded translation models between restarts.
+
+The Compose file binds the app to localhost by default. To access it from another device on your LAN, change the port mapping in `docker-compose.home.yml` from `127.0.0.1:8080:8080` to `8080:8080`, then allow port 8080 through the Ubuntu firewall. Do not forward that port directly from the internet: the app has no login and its video proxy accepts caller-supplied URLs. Use a VPN or an authenticated HTTPS reverse proxy for remote access.
+
+
 ## Cloud deployment configuration
 
 - Container listens on port `8080` by default.
@@ -25,7 +38,7 @@ Then open `http://localhost:8080`.
 
 ## Before making this service public
 
-The current server was originally structured for a controlled/demo environment. It is **not yet hardened for unrestricted public internet access**. Translation sends the post text to MyMemory; anonymous use is limited to 5,000 characters per day, and each request is limited to 500 bytes. In particular:
+The current server was originally structured for a controlled/demo environment. It is **not yet hardened for unrestricted public internet access**. The default Render deployment sends post text to MyMemory; anonymous use is limited to 5,000 characters per day, and each request is limited to 500 bytes. The Ubuntu Compose setup uses the local LibreTranslate container instead. In particular:
 
 1. CORS currently allows every origin.
 2. Video proxy and download endpoints accept caller-supplied URLs and need SSRF protections (allowlist expected media hosts, reject private/link-local IP ranges, validate redirects, and limit response size/time).
