@@ -318,7 +318,7 @@ export default function App() {
                   {isTranslating ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Gemini 翻译中...</span>
+                      <span>免费翻译中...</span>
                     </>
                   ) : (
                     <>
@@ -415,7 +415,7 @@ export default function App() {
 
       {/* Clean quiet footer */}
       <footer className="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-        <p>X-Trans · Twitter 视频多清晰度下载与 Gemini AI 中文智能译配系统</p>
+        <p>X-Trans · Twitter 视频多清晰度下载与免费文本翻译</p>
       </footer>
     </div>
   );
