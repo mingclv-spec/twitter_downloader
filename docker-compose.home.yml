@@ -1,0 +1,34 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      translator:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8080
+      TRANSLATION_API_URL: http://translator:5000/translate
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  translator:
+    image: libretranslate/libretranslate:latest
+    restart: unless-stopped
+    command: ["--host", "0.0.0.0", "--load-only", "en,zh,zt"]
+    volumes:
+      - libretranslate-data:/home/libretranslate/.local
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/languages', timeout=3)"
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  libretranslate-data:
