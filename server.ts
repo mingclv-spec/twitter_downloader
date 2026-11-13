@@ -443,36 +443,67 @@ async function translateWithMyMemory(
   const translated: string[] = [];
 
   for (const chunk of chunks) {
-    const endpoint = new URL('https://api.mymemory.translated.net/get');
-    endpoint.searchParams.set('q', chunk);
-    endpoint.searchParams.set('langpair', sourceLanguage + '|' + targetLanguage);
+    const translationApiUrl = process.env.TRANSLATION_API_URL;
+    const endpoint = new URL(translationApiUrl || 'https://api.mymemory.translated.net/get');
+    const useLibreTranslate = Boolean(translationApiUrl);
 
-    let response: Response | null = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      response = await fetch(endpoint, { signal: AbortSignal.timeout(15000) });
-      if (response.status !== 429 || attempt === 1) break;
+    if (useLibreTranslate) {
+      const toLibreLanguage = (language: string) =>
+        language === 'zh-CN' ? 'zh' : language === 'zh-TW' ? 'zt' : language;
+      const source = toLibreLanguage(sourceLanguage);
+      const target = toLibreLanguage(targetLanguage);
+      let response: Response | null = null;
 
-      const retryAfter = Math.min(Math.max(Number(response.headers.get('retry-after')) || 1, 1), 5);
-      await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-    }
-    if (!response || !response.ok) {
-      throw new Error('MyMemory returned HTTP ' + (response?.status || 'unknown'));
-    }
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: chunk, source, target, format: 'text' }),
+          signal: AbortSignal.timeout(30000),
+        });
+        if (response.status !== 429 || attempt === 1) break;
+        const retryAfter = Math.min(Math.max(Number(response.headers.get('retry-after')) || 1, 1), 5);
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+      }
 
-    const payload = await response.json() as {
-      responseStatus?: number;
-      responseDetails?: string;
-      quotaFinished?: boolean;
-      responseData?: { translatedText?: string };
-    };
+      if (!response || !response.ok) {
+        throw new Error('Local translation service returned HTTP ' + (response?.status || 'unknown'));
+      }
+      const payload = await response.json() as { translatedText?: string };
+      if (!payload.translatedText) {
+        throw new Error('Local translation service did not return a translation.');
+      }
+      translated.push(payload.translatedText);
+    } else {
+      endpoint.searchParams.set('q', chunk);
+      endpoint.searchParams.set('langpair', sourceLanguage + '|' + targetLanguage);
 
-    if (payload.quotaFinished) {
-      throw new Error('MyMemory daily free quota has been reached.');
+      let response: Response | null = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        response = await fetch(endpoint, { signal: AbortSignal.timeout(15000) });
+        if (response.status !== 429 || attempt === 1) break;
+        const retryAfter = Math.min(Math.max(Number(response.headers.get('retry-after')) || 1, 1), 5);
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+      }
+      if (!response || !response.ok) {
+        throw new Error('MyMemory returned HTTP ' + (response?.status || 'unknown'));
+      }
+
+      const payload = await response.json() as {
+        responseStatus?: number;
+        responseDetails?: string;
+        quotaFinished?: boolean;
+        responseData?: { translatedText?: string };
+      };
+
+      if (payload.quotaFinished) {
+        throw new Error('MyMemory daily free quota has been reached.');
+      }
+      if (payload.responseStatus !== 200 || !payload.responseData?.translatedText) {
+        throw new Error(payload.responseDetails || 'MyMemory did not return a translation.');
+      }
+      translated.push(decodeTranslationEntities(payload.responseData.translatedText));
     }
-    if (payload.responseStatus !== 200 || !payload.responseData?.translatedText) {
-      throw new Error(payload.responseDetails || 'MyMemory did not return a translation.');
-    }
-    translated.push(decodeTranslationEntities(payload.responseData.translatedText));
   }
 
   return translated.join('').trim();
